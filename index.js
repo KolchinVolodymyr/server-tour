@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors'); // Підключення cors
 const axios = require('axios');
+// const { createOrder } = require('./orderService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,7 +27,8 @@ app.post('/process_order_data', async (req, res) => {
 
         // 1. Получение токена от первого API
         const remOnlineResponse = await axios.post('https://api.remonline.app/token/new', {
-            api_key: '59457a2d14f247d4b0097db8b8d25a5a' // Публичный API ключ
+            // api_key: '59457a2d14f247d4b0097db8b8d25a5a' // Публичный API ключ
+            api_key: '58538138a467432aac79d90684195285'
             // Дополнительные параметры запроса, если необходимо
         });
 
@@ -88,48 +90,69 @@ app.post('/process_order_data', async (req, res) => {
         if (client) {
             // Клиент существует
             console.log('client exists');
-            // console.log('client', client)
-            // Создание заказа для существующего клиента
-            const orderResponse = await sdk.getOrdersCopy({
-                branch_id: 160137,
-                order_type: 258707,
-                client_id: client.id 
-                // Дополнительные параметры заказа, если необходимо
-            });
-            console.log('Order response:', orderResponse.data);
+
+            const products = orderData.products;
+            for (const product of products) {
+                const orderQuantity = parseInt(product.quantity);
+
+                for (let i = 0; i < orderQuantity; i++) {
+                    try {
+                        const orderResponse = await sdk.getOrdersCopy({
+                            branch_id: 160752,
+                            order_type: 259583,
+                            client_id: client.id,
+                            model: product.name
+                            // Дополнительные параметры заказа, если необходимо
+                        });
+                        console.log('Order newOrderResponse:', orderResponse.data);
+                    } catch (error) {
+                        console.error('Error creating order:', error);
+                        console.error('Error creating order message:', error.data.message);
+                        throw error;
+                    }
+                }
+            }
         } else {
             // Создание нового клиента
             console.log('Create a new client');
-            sdk.clientsCopy({
-                name: orderData.name,
-                phone: '',
-                email: orderData.email,
-                address: orderData.address,
-                notes: `tel: ${orderData.tell}`
-            }).then(newClientResponse => {
-                // console.log('New client response:', newClientResponse.data);
-                // console.log('newClientResponse.data', newClientResponse.data.data.id)
-
-                // Проверяем, что клиент успешно создан
+            try {
+                const newClientResponse = await sdk.clientsCopy({
+                    name: orderData.name,
+                    phone: '',
+                    email: orderData.email,
+                    address: orderData.address,
+                    notes: `tel: ${orderData.tell}`
+                });
+        
                 if (newClientResponse.data.success) {
-                    // Создаем новый заказ для нового клиента
                     console.log('Create a new order for the new client');
-                    sdk.getOrdersCopy({
-                        branch_id: 160137,
-                        order_type: 258707,
-                        client_id: newClientResponse.data.data.id, // Используем ID только что созданного клиента
-                        // Дополнительные параметры заказа, если необходимо
-                    }).then(newOrderResponse => {
-                        console.log('New order response:', newOrderResponse.data);
-                    }).catch(error => {
-                        console.error('Error creating new order:', error);
-                    });
+        
+                    // Создание нового заказа для нового клиента
+                    const products = orderData.products;
+                    for (const product of products) {
+                        const orderQuantity = parseInt(product.quantity);
+                        for (let i = 0; i < orderQuantity; i++) {
+                            try {
+                                const orderResponse = await sdk.getOrdersCopy({
+                                    branch_id: 160752,
+                                    order_type: 259583,
+                                    client_id: newClientResponse.data.data.id,
+                                    model: product.name
+                                });
+                                console.log('Order newOrderResponse:', orderResponse.data);
+                            } catch (error) {
+                                console.error('Error creating order:', error);
+                                console.error('Error creating order message:', error.data.message);
+                                throw error;
+                            }
+                        }
+                    }
                 } else {
                     console.log('Failed to create a new client');
                 }
-            }).catch(error => {
+            } catch (error) {
                 console.error('Error creating new client:', error);
-            });
+            }
         }
 
         res.json({ success: true, message: 'The order data has been processed successfully' });
