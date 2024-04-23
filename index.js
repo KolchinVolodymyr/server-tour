@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors'); // Підключення cors
 const axios = require('axios');
 // const { createOrder } = require('./orderService');
+const config = require('./config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,7 +29,8 @@ app.post('/process_order_data', async (req, res) => {
         // 1. Получение токена от первого API
         const remOnlineResponse = await axios.post('https://api.remonline.app/token/new', {
             // api_key: '59457a2d14f247d4b0097db8b8d25a5a' // Публичный API ключ
-            api_key: '58538138a467432aac79d90684195285'
+            // api_key: '58538138a467432aac79d90684195285'
+            api_key: config.remOnlineApiKey
             // Дополнительные параметры запроса, если необходимо
         });
 
@@ -97,11 +99,17 @@ app.post('/process_order_data', async (req, res) => {
 
                 for (let i = 0; i < orderQuantity; i++) {
                     try {
+                        console.log('product.additionalInfo', product.additionalInfo);
                         const orderResponse = await sdk.getOrdersCopy({
-                            branch_id: 160752,
-                            order_type: 259583,
+                            branch_id: config.branchId,
+                            order_type: config.orderType,
                             client_id: client.id,
-                            model: product.name
+                            // kindof_good: "sssssss",
+                            // brand: "ddddd",
+                            // model: product.name,
+                            brand: product.name,
+                            //assigned_at: //Час запису клієнта
+                            manager_notes: JSON.stringify(product.additionalInfo)
                             // Дополнительные параметры заказа, если необходимо
                         });
                         console.log('Order newOrderResponse:', orderResponse.data);
@@ -134,10 +142,14 @@ app.post('/process_order_data', async (req, res) => {
                         for (let i = 0; i < orderQuantity; i++) {
                             try {
                                 const orderResponse = await sdk.getOrdersCopy({
-                                    branch_id: 160752,
-                                    order_type: 259583,
+                                    // branch_id: 160752,
+                                    branch_id: config.branchId,
+                                    // order_type: 259583,
+                                    order_type: config.orderType,
                                     client_id: newClientResponse.data.data.id,
-                                    model: product.name
+                                    // model: product.name,
+                                    brand: product.name,
+                                    manager_notes: JSON.stringify(product.additionalInfo)
                                 });
                                 console.log('Order newOrderResponse:', orderResponse.data);
                             } catch (error) {
