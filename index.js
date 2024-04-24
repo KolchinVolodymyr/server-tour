@@ -4,21 +4,81 @@ const cors = require('cors'); // Підключення cors
 const axios = require('axios');
 // const { createOrder } = require('./orderService');
 const config = require('./config');
+const performPostRequest = require('./postRequest');
+const performGetRequest = require('./getRequest');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('view engine', 'ejs'); // Установка EJS как шаблонизатора
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+const sdk = require('api')('@remonlineua/v1.0#ab2ihuhlt8gf2fu');
 
 // Включення CORS middleware
 app.use(cors());
+
+// Настройка статических файлов
+app.use('/scripts', express.static(__dirname + '/public'));
 
 // GET запрос для проверки работоспособности сервера
 app.get('/', (req, res) => {
     res.send('Сервер работает!! !');
 });
+// GET запрос для отображения формы
+app.get('/form_email', (req, res) => {
+    // res.render('index'); // Рендеринг HTML шаблона с помощью EJS
+    res.render('index', { message: 'message 222' });
+});
 
-const sdk = require('api')('@remonlineua/v1.0#ab2ihuhlt8gf2fu');
+// POST запрос для обработки данных формы
+app.post('/submit_email', async(req, res) => {
+    const email = req.body.email;
+    
+    try {
+        performGetRequest( 'https://api.remonline.app/order/')
+        .then(data => {
+          if (data) {
+            console.log('Response data:', data);
+            // Дальнейшая обработка полученных данных
+          } else {
+            console.log('Failed to fetch data');
+          }
+        });
+        
+        // Отправляем заказ на указанный адрес электронной почты
+        // const transporter = nodemailer.createTransport({
+        //     service: 'gmail',
+        //     auth: {
+        //         user: 'your_email@gmail.com', // Замените на ваш адрес электронной почты
+        //         pass: 'your_password' // Замените на пароль вашей учетной записи
+        //     }
+        // });
+
+        // const mailOptions = {
+        //     from: 'your_email@gmail.com', // Замените на ваш адрес электронной почты
+        //     to: email,
+        //     subject: 'Order Details',
+        //     text: JSON.stringify(orderData) // Преобразуем данные заказа в строку и отправляем в тексте письма
+        // };
+
+        // transporter.sendMail(mailOptions, (error, info) => {
+        //     if (error) {
+        //         console.error('Error sending email:', error);
+        //         res.status(500).send('Error sending email');
+        //     } else {
+        //         console.log('Email sent:', info.response);
+        //         res.send('Email submitted successfully!');
+        //     }
+        // });
+    } catch (error) {
+        console.error('Error fetching order data:', error);
+        res.status(500).send('Error fetching order data');
+    }
+});
+
+
 
 app.post('/process_order_data', async (req, res) => {
     try {
