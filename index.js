@@ -6,6 +6,9 @@ const axios = require('axios');
 const config = require('./config');
 const performPostRequest = require('./postRequest');
 const performGetRequest = require('./getRequest');
+const fs = require('fs');
+const { findOrdersByEmail } = require('./Utils/orderUtils'); // Подключаем функцию из нового файла
+const { sendEmail } = require('./Utils/emailUtils');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,52 +35,82 @@ app.get('/form_email', (req, res) => {
     res.render('index', { message: 'message 222' });
 });
 
-// POST запрос для обработки данных формы
-app.post('/submit_email', async(req, res) => {
-    const email = req.body.email;
+// // POST запрос для обработки данных формы
+// app.post('/submit_email', async(req, res) => {
+//     const email = req.body.email;
     
-    try {
-        performGetRequest( 'https://api.remonline.app/order/')
-        .then(data => {
-          if (data) {
-            console.log('Response data:', data);
-            // Дальнейшая обработка полученных данных
-          } else {
-            console.log('Failed to fetch data');
-          }
-        });
+//     try {
+//         performGetRequest( 'https://api.remonline.app/order/')
+//         .then(data => {
+//             if (data) {
+
+//                 // Пример использования функции
+//                 const clientOrders = findOrdersByEmail(data.data, email);
+//                 // console.log('clientOrders', clientOrders);
+//                 clientOrders.forEach(item => { 
+//                     console.log('clientOrders label', item.id_label);
+//                     console.log('created_at', item.created_at);
+//                 });
+
+//             } else { 
+//                 console.log('Failed to fetch data');
+//           }
+//         });
         
-        // Отправляем заказ на указанный адрес электронной почты
-        // const transporter = nodemailer.createTransport({
-        //     service: 'gmail',
-        //     auth: {
-        //         user: 'your_email@gmail.com', // Замените на ваш адрес электронной почты
-        //         pass: 'your_password' // Замените на пароль вашей учетной записи
-        //     }
-        // });
+        
+//     } catch (error) {
+//         console.error('Error fetching order data:', error);
+//         res.status(500).send('Error fetching order data');
+//     }
+// });
+// POST запрос для обработки данных формы
+app.post('/submit_email', async (req, res) => {
+    const email = req.body.email;
 
-        // const mailOptions = {
-        //     from: 'your_email@gmail.com', // Замените на ваш адрес электронной почты
-        //     to: email,
-        //     subject: 'Order Details',
-        //     text: JSON.stringify(orderData) // Преобразуем данные заказа в строку и отправляем в тексте письма
-        // };
+    try {
+        // Выполняем запрос, чтобы узнать общее количество заказов
+        const totalCountData = await performGetRequest('https://api.remonline.app/order/');
+        const totalCount = totalCountData.count; // Общее количество заказов
+        const totalPages = Math.ceil(totalCount / 50); // Вычисляем общее количество страниц
 
-        // transporter.sendMail(mailOptions, (error, info) => {
-        //     if (error) {
-        //         console.error('Error sending email:', error);
-        //         res.status(500).send('Error sending email');
-        //     } else {
-        //         console.log('Email sent:', info.response);
-        //         res.send('Email submitted successfully!');
-        //     }
-        // });
+        // Начинаем поиск с последней страницы и идем к началу
+        for (let currentPage = totalPages; currentPage >= 1; currentPage--) {
+            const url = `https://api.remonline.app/order/?page=${currentPage}`;
+            const data = await performGetRequest(url);
+
+            if (data) {
+                const orders = data.data;
+
+                // Ищем заказы по электронной почте на текущей странице
+                const clientOrders = findOrdersByEmail(orders, email);
+                console.log('start')
+                // Если найдены заказы, выводим информацию и завершаем цикл
+                // if (clientOrders.length > 0) {
+                //     clientOrders.forEach(item => {
+                //         console.log('clientOrders label', item.id_label);
+                //         console.log('created_at', item.created_at);
+                //     });
+                //     break;
+                // }
+                if (clientOrders.length > 0) {
+                    clientOrders.forEach(item => {
+                        console.log('clientOrders label', item.id_label);
+                    })
+                    sendEmail(clientOrders, email);
+                    res.status(200).send('Письмо отправлено');
+                    return;
+                }
+            } else {
+                console.log('Failed to fetch data');
+                break;
+            }
+        }
+
     } catch (error) {
         console.error('Error fetching order data:', error);
         res.status(500).send('Error fetching order data');
     }
 });
-
 
 
 app.post('/process_order_data', async (req, res) => {
@@ -88,10 +121,7 @@ app.post('/process_order_data', async (req, res) => {
 
         // 1. Получение токена от первого API
         const remOnlineResponse = await axios.post('https://api.remonline.app/token/new', {
-            // api_key: '59457a2d14f247d4b0097db8b8d25a5a' // Публичный API ключ
-            // api_key: '58538138a467432aac79d90684195285'
             api_key: config.remOnlineApiKey
-            // Дополнительные параметры запроса, если необходимо
         });
 
         // Извлечение токена из ответа первого API
