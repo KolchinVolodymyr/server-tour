@@ -9,6 +9,7 @@ const performGetRequest = require('./getRequest');
 const fs = require('fs');
 const { findOrdersByEmail } = require('./Utils/orderUtils'); // Подключаем функцию из нового файла
 const { sendEmail } = require('./Utils/emailUtils');
+const createOrder = require('./createOrder'); 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -181,32 +182,20 @@ app.post('/process_order_data', async (req, res) => {
 
         if (client) {
             // Клиент существует
-            console.log('client exists');
+            console.log('client exists!!');
 
             const products = orderData.products;
             for (const product of products) {
                 const orderQuantity = parseInt(product.quantity);
 
                 for (let i = 0; i < orderQuantity; i++) {
+                    const serial = Math.floor(Math.random() * 90000) + 10000;
                     try {
-                        console.log('product.additionalInfo', product.additionalInfo);
-                        const orderResponse = await sdk.getOrdersCopy({
-                            branch_id: config.branchId,
-                            order_type: config.orderType,
-                            client_id: client.id,
-                            // kindof_good: "sssssss",
-                            // brand: "ddddd",
-                            // model: product.name,
-                            brand: product.name,
-                            //assigned_at: //Час запису клієнта
-                            manager_notes: JSON.stringify(product.additionalInfo)
-                            // Дополнительные параметры заказа, если необходимо
-                        });
-                        console.log('Order newOrderResponse:', orderResponse.data);
+                        await createOrder(config.branchId, config.orderType, client.id, product.name, serial, product.additionalInfo);
                     } catch (error) {
                         console.error('Error creating order:', error);
-                        console.error('Error creating order message:', error.data.message);
-                        throw error;
+                        console.error('Error creating order message:', error.message);
+                        // Обработка ошибки
                     }
                 }
             }
@@ -241,7 +230,7 @@ app.post('/process_order_data', async (req, res) => {
                                     brand: product.name,
                                     manager_notes: JSON.stringify(product.additionalInfo)
                                 });
-                                console.log('Order newOrderResponse:', orderResponse.data);
+                                console.log('22 Order newOrderResponse:', orderResponse.data);
                             } catch (error) {
                                 console.error('Error creating order:', error);
                                 console.error('Error creating order message:', error.data.message);

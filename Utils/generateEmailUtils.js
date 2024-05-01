@@ -5,6 +5,8 @@ function generateEmailBody(clientOrders) {
     clientOrders.forEach((order, index) => {
         emailBody += `Заказ ${index + 1}:\n`;
         emailBody += `ID: ${order.id_label}\n`;
+        emailBody += `Client Email: ${order.client.email}\n`;
+        emailBody += `VIN Code: ${order.asset.uid}\n`;
         emailBody += `Дата создания: ${new Date(order.created_at)}\n`;
         emailBody += '\n';
     });
