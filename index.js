@@ -183,7 +183,14 @@ app.post('/process_order_data', async (req, res) => {
         if (client) {
             // Клиент существует
             console.log('client exists!!');
-
+            orderData.products.forEach(product => {
+                if (product.additionalInfo) {
+                    product.additionalInfo.paymentMethod = orderData.paymentMethod;
+                } else {
+                    product.additionalInfo = { paymentMethod: orderData.paymentMethod };
+                }
+            });
+            
             const products = orderData.products;
             for (const product of products) {
                 const orderQuantity = parseInt(product.quantity);
@@ -191,7 +198,7 @@ app.post('/process_order_data', async (req, res) => {
                 for (let i = 0; i < orderQuantity; i++) {
                     const serial = Math.floor(Math.random() * 90000) + 10000;
                     try {
-                        await createOrder(config.branchId, config.orderType, client.id, product.name, serial, product.additionalInfo);
+                        await createOrder(config.branchId, config.orderType, client.id, product.name, serial, product.additionalInfo, orderData.paymentMethod);
                     } catch (error) {
                         console.error('Error creating order:', error);
                         console.error('Error creating order message:', error.message);
@@ -199,7 +206,7 @@ app.post('/process_order_data', async (req, res) => {
                     }
                 }
             }
-        } else {
+        } else { 
             // Создание нового клиента
             console.log('Create a new client');
             try {
@@ -216,21 +223,31 @@ app.post('/process_order_data', async (req, res) => {
         
                     // Создание нового заказа для нового клиента
                     const products = orderData.products;
+                    orderData.products.forEach(product => {
+                        if (product.additionalInfo) {
+                            product.additionalInfo.paymentMethod = orderData.paymentMethod;
+                        } else {
+                            product.additionalInfo = { paymentMethod: orderData.paymentMethod };
+                        }
+                    });
+
                     for (const product of products) {
                         const orderQuantity = parseInt(product.quantity);
                         for (let i = 0; i < orderQuantity; i++) {
                             try {
-                                const orderResponse = await sdk.getOrdersCopy({
-                                    // branch_id: 160752,
-                                    branch_id: config.branchId,
-                                    // order_type: 259583,
-                                    order_type: config.orderType,
-                                    client_id: newClientResponse.data.data.id,
-                                    // model: product.name,
-                                    brand: product.name,
-                                    manager_notes: JSON.stringify(product.additionalInfo)
-                                });
-                                console.log('22 Order newOrderResponse:', orderResponse.data);
+                                console.log('product', product);
+                                // for (let i = 0; i < orderQuantity; i++) {
+                                    const serial = Math.floor(Math.random() * 90000) + 10000;
+                                    try {
+                                        await createOrder(config.branchId, config.orderType, newClientResponse.data.data.id, product.name, serial, product.additionalInfo);
+                                    } catch (error) {
+                                        console.error('Error creating order:', error);
+                                        console.error('Error creating order message:', error.message);
+                                        // Обработка ошибки
+                                    }
+                                // }
+
+                                // console.log('22 Order newOrderResponse:', orderResponse.data);
                             } catch (error) {
                                 console.error('Error creating order:', error);
                                 console.error('Error creating order message:', error.data.message);

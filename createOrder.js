@@ -2,12 +2,15 @@ const axios = require('axios');
 const config = require('./config');
 const getToken = require('./getToken');
 
-async function createOrder(branchId, orderType, clientId, brand, serial, managerNotes) {
+async function createOrder(branchId, orderType, clientId, brand, serial, managerNotes, paymentMethod) {
     try {
         const token = await getToken(config.remOnlineApiKey);
         if (!token) {
           throw new Error('Failed to obtain token');
         }
+        // console.log('paymentMethod createOrder', paymentMethod);
+        // const payment = {payment: paymentMethod};
+        // Object.assign(managerNotes, payment);
         const orderData = {
             branch_id: branchId,
             order_type: orderType,
